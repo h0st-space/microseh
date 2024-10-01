@@ -161,6 +161,10 @@ uint32_t HandlerStub(_In_ PHANDLED_PROC HandledProc, _In_ PVOID Closure, _Inout_
 // fix docs.rs compilation.
 uint32_t HandlerStub(void* HandledProc, void* Closure, void* Exception)
 {
+    (void)HandledProc;
+    (void)Closure;
+    (void)Exception;
+
     return MS_DISABLED;
 }
 
