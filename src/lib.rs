@@ -20,7 +20,11 @@ extern "C" {
 }
 
 #[cfg(docsrs)]
-fn handler_stub(proc: HandledProc, closure: *mut c_void, exception: *mut Exception) -> u32 {
+unsafe fn handler_stub(
+    _proc: HandledProc,
+    _closure: *mut c_void,
+    _exception: *mut Exception,
+) -> u32 {
     MS_DISABLED
 }
 
