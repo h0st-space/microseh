@@ -13,9 +13,15 @@ type HandledProc = unsafe extern "system" fn(*mut c_void);
 const MS_CATCHED: u32 = 0x1;
 const MS_DISABLED: u32 = 0x2;
 
+#[cfg(not(docsrs))]
 extern "C" {
     #[link_name = "HandlerStub"]
     fn handler_stub(proc: HandledProc, closure: *mut c_void, exception: *mut Exception) -> u32;
+}
+
+#[cfg(docsrs)]
+fn handler_stub(proc: HandledProc, closure: *mut c_void, exception: *mut Exception) -> u32 {
+    MS_DISABLED
 }
 
 unsafe extern "system" fn handled_proc<F>(closure: *mut c_void)
@@ -41,7 +47,7 @@ where
 ///
 /// * `Ok(())` - If the closure executed without throwing any exceptions.
 /// * `Err(Exception)` - If an exception occurred during the execution of the closure.
-/// 
+///
 /// # Examples
 ///
 /// ```
@@ -53,18 +59,18 @@ where
 ///     println!("an exception occurred: {:?}", e);
 /// }
 /// ```
-/// 
+///
 /// # Caveats
-/// 
+///
 /// If an exception occours within the closure, resources that require cleanup via\
 /// the `Drop` trait, may not be properly released.
-/// 
+///
 /// As a rule of thumb, it's recommended not to define resources that implement\
 /// the `Drop` trait inside the closure. Instead, allocate and manage these resources\
 /// outside the closure, ensuring proper cleanup even if an exception occurs.
-/// 
+///
 /// # Panics
-/// 
+///
 /// If exception handling is disabled in the build, which occurs when the library is\
 /// not built on Windows with Microsoft Visual C++.
 pub fn try_seh<F>(mut closure: F) -> Result<(), Exception>
@@ -89,7 +95,6 @@ mod tests {
 
     const INVALID_PTR: *mut i32 = core::mem::align_of::<i32>() as _;
 
-
     #[test]
     #[cfg(feature = "std")]
     fn all_good() {
@@ -109,7 +114,6 @@ mod tests {
         assert_eq!(ex.is_err(), true);
         assert_eq!(ex.unwrap_err().code(), ExceptionCode::AccessViolation);
     }
-
 
     #[test]
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
