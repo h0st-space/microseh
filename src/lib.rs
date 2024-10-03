@@ -50,7 +50,7 @@ where
 }
 
 #[cfg(any(not(windows), docsrs))]
-fn do_execute_proc<F>(closure: F) -> Result<(), Exception>
+fn do_execute_proc<F>(_closure: F) -> Result<(), Exception>
 where
     F: FnMut(),
 {
