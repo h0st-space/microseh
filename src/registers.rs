@@ -5,6 +5,7 @@ const NUM_REGISTERS: usize = 17;
 #[cfg(target_arch = "aarch64")]
 const NUM_REGISTERS: usize = 33;
 
+/// Represents a saved state of the CPU registers.
 #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
 #[repr(C)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -14,12 +15,16 @@ pub struct Registers {
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
 impl Registers {
+    /// Creates an instance of `Registers` with all registers initialized to zero.
     pub fn empty() -> Self {
         Self {
             list: [0; NUM_REGISTERS],
         }
     }
 
+    /// # Returns
+    ///
+    /// All the registers in the CPU state, in the order they were saved.
     pub fn list(&self) -> &[usize] {
         &self.list
     }
@@ -28,6 +33,7 @@ impl Registers {
 macro_rules! get_reg {
     ($reg:ident, $index:expr) => {
         #[inline]
+        #[doc = concat!("# Returns\n\nThe value of the `", stringify!($reg), "` register.")]
         pub fn $reg(&self) -> usize {
             self.list[$index]
         }

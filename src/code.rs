@@ -1,3 +1,8 @@
+/// Represents a system-specific exception code.
+/// 
+/// This enum encapsulates the various exception codes that can be returned by the
+/// `GetExceptionCode` Windows API function.
+/// 
 /// See: <https://learn.microsoft.com/en-us/windows/win32/debug/getexceptioncode>
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -29,6 +34,15 @@ pub enum ExceptionCode {
 }
 
 impl core::fmt::Display for ExceptionCode {
+    /// Formats the exception code into a human-readable string.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - The formatter to write to.
+    ///
+    /// # Returns
+    ///
+    /// Whether the formatting operation succeeded.
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             ExceptionCode::Invalid => write!(f, "invalid exception"),
@@ -54,7 +68,7 @@ impl core::fmt::Display for ExceptionCode {
             ExceptionCode::PrivilegedInstruction => write!(f, "the thread attempts to execute an instruction with an operation that is not allowed in the current computer mode"),
             ExceptionCode::SingleStep => write!(f, "a trace trap or other single instruction mechanism signals that one instruction is executed"),
             ExceptionCode::StackOverflow => write!(f, "the thread used up its stack"),
-            ExceptionCode::UnwindConsolidate =>write!(f, "a frame consolidation has been executed")
+            ExceptionCode::UnwindConsolidate => write!(f, "a frame consolidation has been executed")
         }
     }
 }

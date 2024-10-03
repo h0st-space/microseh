@@ -9,12 +9,21 @@ mod registers;
 
 pub use code::ExceptionCode;
 pub use exception::Exception;
+pub use registers::Registers;
 
-type HandledProc = unsafe extern "system" fn(*mut c_void);
 
 const MS_SUCCEEDED: u32 = 0x0;
 const MS_CATCHED: u32 = 0x1;
 
+/// Type alias for a function that converts a pointer to a function and executes it.
+type HandledProc = unsafe extern "system" fn(*mut c_void);
+
+
+/// Internal function that converts a pointer to a function and executes it.
+///
+/// # Arguments
+///
+/// * `closure` - A pointer to the closure or function to execute.
 #[inline(always)]
 unsafe extern "system" fn handled_proc<F>(closure: *mut c_void)
 where
@@ -30,10 +39,33 @@ where
 
 #[cfg(all(windows, not(docsrs)))]
 extern "C" {
+    /// External function that is responsible for handling exceptions.
+    ///
+    /// # Arguments
+    ///
+    /// * `proc` - The wrapper function that will execute the closure.
+    /// * `closure` - A pointer to the closure or function to be executed within the
+    ///               handled context.
+    /// * `exception` - Where the exception information will be stored if one occurs.
+    ///
+    /// # Returns
+    ///
+    /// * `0x0` - If the closure executed without throwing any exceptions.
+    /// * `0x1` - If an exception occurred during the execution of the closure.
     #[link_name = "HandlerStub"]
     fn handler_stub(proc: HandledProc, closure: *mut c_void, exception: *mut Exception) -> u32;
 }
 
+/// Primary execution orchestrator that calls the exception handling stub.
+///
+/// # Arguments
+///
+/// * `closure` - The closure or function to be executed within the handled context.
+///
+/// # Returns
+///
+/// * `Ok(())` - If the closure executed without throwing any exceptions.
+/// * `Err(Exception)` - If an exception occurred during the execution of the closure.
 #[cfg(all(windows, not(docsrs)))]
 fn do_execute_proc<F>(mut closure: F) -> Result<(), Exception>
 where
@@ -49,6 +81,12 @@ where
     }
 }
 
+/// Fallback execution orchestrator to be used when exception handling is disabled.
+///
+/// # Panics
+///
+/// This function will always panic, notifying the user that exception handling is not
+/// available in the current build.
 #[cfg(any(not(windows), docsrs))]
 fn do_execute_proc<F>(_closure: F) -> Result<(), Exception>
 where
