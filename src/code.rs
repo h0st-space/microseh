@@ -1,8 +1,8 @@
 /// Represents a system-specific exception code.
-/// 
+///
 /// This enum encapsulates the various exception codes that can be returned by the
 /// `GetExceptionCode` Windows API function.
-/// 
+///
 /// See: <https://learn.microsoft.com/en-us/windows/win32/debug/getexceptioncode>
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
