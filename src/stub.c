@@ -112,7 +112,7 @@ REGISTERS MakeRegisters(_In_ PCONTEXT Context)
 #endif // HAS_REGISTERS
 
 
-typedef void(CALLBACK *PHANDLED_PROC)(PVOID Closure);
+typedef void(CALLBACK *PPROC_EXECUTOR)(PVOID Proc);
 
 typedef struct _EXCEPTION
 {
@@ -123,7 +123,7 @@ typedef struct _EXCEPTION
 #endif
 } EXCEPTION, *PEXCEPTION;
 
-uint32_t HandlerStub(_In_ PHANDLED_PROC HandledProc, _In_ PVOID Closure, _Inout_ PEXCEPTION Exception)
+uint32_t HandlerStub(_In_ PPROC_EXECUTOR ProcExecutor, _In_ PVOID Proc, _Inout_ PEXCEPTION Exception)
 {
     uint32_t Result = MS_SUCCEEDED;
     LPEXCEPTION_POINTERS Pointers = NULL;
@@ -131,7 +131,7 @@ uint32_t HandlerStub(_In_ PHANDLED_PROC HandledProc, _In_ PVOID Closure, _Inout_
 
     __try
     {
-        HandledProc(Closure);
+        ProcExecutor(Proc);
     }
     __except (Code = GetExceptionCode(), Pointers = GetExceptionInformation(), EXCEPTION_EXECUTE_HANDLER)
     {

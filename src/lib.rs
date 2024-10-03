@@ -9,67 +9,106 @@ mod registers;
 
 pub use code::ExceptionCode;
 pub use exception::Exception;
-
-type HandledProc = unsafe extern "system" fn(*mut c_void);
+pub use registers::Registers;
 
 const MS_SUCCEEDED: u32 = 0x0;
 const MS_CATCHED: u32 = 0x1;
 
+/// Type alias for a function that converts a pointer to a function and executes it.
+type ProcExecutor = unsafe extern "system" fn(*mut c_void);
+
+/// Internal function that converts a pointer to a function and executes it.
+///
+/// # Arguments
+///
+/// * `proc` - A pointer to the procedure to execute.
 #[inline(always)]
-unsafe extern "system" fn handled_proc<F>(closure: *mut c_void)
+unsafe extern "system" fn proc_executor<F>(proc: *mut c_void)
 where
     F: FnMut(),
 {
-    // Closure may be equal to std::ptr::null_mut() if the compiler optimized it away.
+    // The procedure may be equal to std::ptr::null_mut() if the compiler optimized it away.
     // This also means that if you have some code that is optimized away, any exception it
     // contained will not get thrown.
-    if let Some(closure) = closure.cast::<F>().as_mut() {
-        closure();
+    if let Some(proc) = proc.cast::<F>().as_mut() {
+        proc();
     }
 }
 
 #[cfg(all(windows, not(docsrs)))]
 extern "C" {
+    /// External function that is responsible for handling exceptions.
+    ///
+    /// # Arguments
+    ///
+    /// * `proc_executor` - The wrapper function that will execute the procedure.
+    /// * `proc` - A pointer to the procedure to be executed within the handled context.
+    /// * `exception` - Where the exception information will be stored if one occurs.
+    ///
+    /// # Returns
+    ///
+    /// * `0x0` - If the procedure executed without throwing any exceptions.
+    /// * `0x1` - If an exception occurred during the execution of the procedure.
     #[link_name = "HandlerStub"]
-    fn handler_stub(proc: HandledProc, closure: *mut c_void, exception: *mut Exception) -> u32;
+    fn handler_stub(
+        proc_executor: ProcExecutor,
+        proc: *mut c_void,
+        exception: *mut Exception,
+    ) -> u32;
 }
 
+/// Primary execution orchestrator that calls the exception handling stub.
+///
+/// # Arguments
+///
+/// * `proc` - The procedure to be executed within the handled context.
+///
+/// # Returns
+///
+/// * `Ok(())` - If the procedure executed without throwing any exceptions.
+/// * `Err(Exception)` - If an exception occurred during the execution of the procedure.
 #[cfg(all(windows, not(docsrs)))]
-fn do_execute_proc<F>(mut closure: F) -> Result<(), Exception>
+fn do_call_stub<F>(mut proc: F) -> Result<(), Exception>
 where
     F: FnMut(),
 {
     let mut exception = Exception::empty();
-    let closure = &mut closure as *mut _ as *mut c_void;
+    let proc = &mut proc as *mut _ as *mut c_void;
 
-    match unsafe { handler_stub(handled_proc::<F>, closure, &mut exception) } {
+    match unsafe { handler_stub(proc_executor::<F>, proc, &mut exception) } {
         MS_SUCCEEDED => Ok(()),
         MS_CATCHED => Err(exception),
         _ => unreachable!(),
     }
 }
 
+/// Fallback execution orchestrator to be used when exception handling is disabled.
+///
+/// # Panics
+///
+/// This function will always panic, notifying the user that exception handling is not
+/// available in the current build.
 #[cfg(any(not(windows), docsrs))]
-fn do_execute_proc<F>(_closure: F) -> Result<(), Exception>
+fn do_call_stub<F>(_proc: F) -> Result<(), Exception>
 where
     F: FnMut(),
 {
     panic!("exception handling is not available in this build of microseh")
 }
 
-/// Executes the provided closure in a context where exceptions are handled, catching any\
+/// Executes the provided procedure in a context where exceptions are handled, catching any\
 /// hardware exceptions that occur.
 ///
-/// Any value returned by the closure is returned by this function, if no exceptions occur.
+/// Any value returned by the procedure is returned by this function, if no exceptions occur.
 ///
 /// # Arguments
 ///
-/// * `closure` - The closure or function to be executed within the handled context.
+/// * `proc` - The procedure to be executed within the handled context.
 ///
 /// # Returns
 ///
-/// * `Ok(R)` - If the closure executed without throwing any exceptions.
-/// * `Err(Exception)` - If an exception occurred during the execution of the closure.
+/// * `Ok(R)` - If the procedure executed without throwing any exceptions.
+/// * `Err(Exception)` - If an exception occurred during the execution of the procedure.
 ///
 /// # Examples
 ///
@@ -85,25 +124,25 @@ where
 ///
 /// # Caveats
 ///
-/// If an exception occours within the closure, resources that require cleanup via\
-/// the `Drop` trait, will not be released.
+/// If an exception occours within the procedure, resources that require cleanup via\
+/// the `Drop` trait will not be released.
 ///
 /// As a rule of thumb, it's recommended not to define resources that implement\
-/// the `Drop` trait inside the closure. Instead, allocate and manage these resources\
-/// outside the closure, ensuring proper cleanup even if an exception occurs.
+/// the `Drop` trait inside the procedure. Instead, allocate and manage these resources\
+/// outside, ensuring proper cleanup even if an exception occurs.
 ///
 /// # Panics
 ///
 /// If exception handling is disabled in the build, which occurs when the library is\
 /// not built on Windows with Microsoft Visual C++.
 #[inline(always)]
-pub fn try_seh<F, R>(mut closure: F) -> Result<R, Exception>
+pub fn try_seh<F, R>(mut proc: F) -> Result<R, Exception>
 where
     F: FnMut() -> R,
 {
     let mut ret_val = MaybeUninit::<R>::uninit();
-    do_execute_proc(|| {
-        ret_val.write(closure());
+    do_call_stub(|| {
+        ret_val.write(proc());
     })
     // SAFETY: We should only reach this point if the inner closure has returned
     //         without throwing an exception, so `ret_val` should be initialized.
