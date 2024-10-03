@@ -1,4 +1,6 @@
+#![allow(dead_code)]
 #![cfg_attr(not(feature = "std"), no_std)]
+
 use core::{ffi::c_void, mem::MaybeUninit};
 
 mod code;
