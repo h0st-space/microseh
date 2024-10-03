@@ -58,7 +58,7 @@ where
 
 /// Executes the provided closure in a context where exceptions are handled, catching any\
 /// hardware exceptions that occur.
-/// 
+///
 /// Any value returned by the closure is returned by this function, if no exceptions occur.
 ///
 /// # Arguments
@@ -100,10 +100,13 @@ where
     F: FnMut() -> R,
 {
     let mut ret_val = MaybeUninit::<R>::uninit();
-    do_execute_proc(|| { ret_val.write(closure()); })
-        .map(|_| unsafe { ret_val.assume_init() })
+    do_execute_proc(|| {
+        ret_val.write(closure());
+    })
+    // SAFETY: We should only reach this point if the inner closure has returned
+    //         without throwing an exception, so `ret_val` should be initialized.
+    .map(|_| unsafe { ret_val.assume_init() })
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -245,13 +248,13 @@ mod tests {
 
     #[test]
     fn ret_vals() {
-        let a = try_seh(|| { 1337 });
+        let a = try_seh(|| 1337);
         assert_eq!(a.unwrap(), 1337);
 
-        let b = try_seh(|| { "hello" });
+        let b = try_seh(|| "hello");
         assert_eq!(b.unwrap(), "hello");
 
-        let c = try_seh(|| { });
+        let c = try_seh(|| {});
         assert_eq!(core::mem::size_of_val(&c.unwrap()), 0x0);
     }
 }
