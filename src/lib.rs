@@ -1,5 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-use core::ffi::c_void;
+use core::{ffi::c_void, mem::MaybeUninit};
 
 mod code;
 mod exception;
@@ -40,6 +40,22 @@ where
     }
 }
 
+fn do_execute_proc<F>(mut closure: F) -> Result<(), Exception>
+where
+    F: FnMut(),
+{
+    let mut exception = Exception::empty();
+    let closure = &mut closure as *mut _ as *mut c_void;
+
+    unsafe {
+        match handler_stub(handled_proc::<F>, closure, &mut exception) {
+            MS_CATCHED => Err(exception),
+            MS_DISABLED => panic!("exception handling is not supported in this build of microseh"),
+            /* MS_SUCCEEDED */ _ => Ok(()),
+        }
+    }
+}
+
 /// Executes the provided closure in a context where exceptions are handled, catching any\
 /// hardware exceptions that occur.
 ///
@@ -77,21 +93,15 @@ where
 ///
 /// If exception handling is disabled in the build, which occurs when the library is\
 /// not built on Windows with Microsoft Visual C++.
-pub fn try_seh<F>(mut closure: F) -> Result<(), Exception>
+pub fn try_seh<F, R>(mut closure: F) -> Result<R, Exception>
 where
-    F: FnMut(),
+    F: FnMut() -> R,
 {
-    let mut exception = Exception::empty();
-    let closure = &mut closure as *mut _ as *mut c_void;
-
-    unsafe {
-        match handler_stub(handled_proc::<F>, closure, &mut exception) {
-            MS_CATCHED => Err(exception),
-            MS_DISABLED => panic!("exception handling is not supported in this build of microseh"),
-            /* MS_SUCCEEDED */ _ => Ok(()),
-        }
-    }
+    let mut ret_val = MaybeUninit::<R>::uninit();
+    do_execute_proc(|| { ret_val.write(closure()); })
+        .map(|_| unsafe { ret_val.assume_init() })
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -229,5 +239,17 @@ mod tests {
         );
 
         assert_eq!(ex.unwrap_err().registers().x0(), 0xbadc0debabefffff);
+    }
+
+    #[test]
+    fn ret_vals() {
+        let a = try_seh(|| { 1337 });
+        assert_eq!(a.unwrap(), 1337);
+
+        let b = try_seh(|| { "hello" });
+        assert_eq!(b.unwrap(), "hello");
+
+        let c = try_seh(|| { });
+        assert_eq!(core::mem::size_of_val(&c.unwrap()), 0x0);
     }
 }
