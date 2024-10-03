@@ -33,7 +33,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-microseh = "1.0"
+microseh = "1.1"
 ```
 
 **Minimal Example:** Dereference an invalid pointer without crashing the program, and return the handled exception.
