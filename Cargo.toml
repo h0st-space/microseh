@@ -25,4 +25,8 @@ std = []
 default-target = "x86_64-pc-windows-msvc"
 rustc-args = ["--cfg", "docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
-targets = ["i686-pc-windows-msvc", "x86_64-pc-windows-msvc"]
+targets = [
+    "i686-pc-windows-msvc",
+    "x86_64-pc-windows-msvc",
+    "aarch64-pc-windows-msvc",
+]

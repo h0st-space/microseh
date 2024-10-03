@@ -1,13 +1,10 @@
 #include <stdint.h>
 
-#define MS_SUCCEEDED 0x0
-#define MS_CATCHED 0x1
-#define MS_DISABLED 0x2
-
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32)
-
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
+#define MS_SUCCEEDED 0x0
+#define MS_CATCHED 0x1
 
 #define TG_ARCH_X86 1
 #define TG_ARCH_X64 2
@@ -152,20 +149,3 @@ uint32_t HandlerStub(_In_ PHANDLED_PROC HandledProc, _In_ PVOID Closure, _Inout_
 
     return Result;
 }
-
-#else // _WIN32
-
-#pragma message("WARNING: Exception handling is disabled! This configuration is intended for use by docs.rs only")
-
-// We are not compiling with Windows MSVC, so we implement a dummy HandlerStub to
-// fix docs.rs compilation.
-uint32_t HandlerStub(void* HandledProc, void* Closure, void* Exception)
-{
-    (void)HandledProc;
-    (void)Closure;
-    (void)Exception;
-
-    return MS_DISABLED;
-}
-
-#endif // _WIN32
