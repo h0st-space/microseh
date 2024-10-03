@@ -1,11 +1,16 @@
-#[cfg(not(docsrs))]
+#[cfg(all(windows, not(docsrs)))]
 extern crate cc;
 
-#[cfg(not(docsrs))]
+#[cfg(all(windows, not(docsrs)))]
 fn main() {
-    if std::env::var("HOST").unwrap().contains("gnu") { return; }
-    cc::Build::new().file("src/stub.c").compile("sehstub");
+    // TODO: this is a hack to allow this crate to build on docs.rs.
+    //       https://github.com/sonodima/microseh/pull/11#issuecomment-2385633164
+    if !std::env::var("HOST").unwrap_or_default().contains("gnu") {
+        cc::Build::new().file("src/stub.c").compile("sehstub");
+    }
 }
 
-#[cfg(docsrs)]
-fn main() {}
+#[cfg(any(not(windows), docsrs))]
+fn main() {
+    println!("cargo:warning=building for a non-supported platform, exception handling will not be available");
+}

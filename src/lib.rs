@@ -10,24 +10,10 @@ pub use exception::Exception;
 
 type HandledProc = unsafe extern "system" fn(*mut c_void);
 
+const MS_SUCCEEDED: u32 = 0x0;
 const MS_CATCHED: u32 = 0x1;
-const MS_DISABLED: u32 = 0x2;
 
-#[cfg(not(docsrs))]
-extern "C" {
-    #[link_name = "HandlerStub"]
-    fn handler_stub(proc: HandledProc, closure: *mut c_void, exception: *mut Exception) -> u32;
-}
-
-#[cfg(docsrs)]
-unsafe fn handler_stub(
-    _proc: HandledProc,
-    _closure: *mut c_void,
-    _exception: *mut Exception,
-) -> u32 {
-    MS_DISABLED
-}
-
+#[inline(always)]
 unsafe extern "system" fn handled_proc<F>(closure: *mut c_void)
 where
     F: FnMut(),
@@ -40,6 +26,13 @@ where
     }
 }
 
+#[cfg(all(windows, not(docsrs)))]
+extern "C" {
+    #[link_name = "HandlerStub"]
+    fn handler_stub(proc: HandledProc, closure: *mut c_void, exception: *mut Exception) -> u32;
+}
+
+#[cfg(all(windows, not(docsrs)))]
 fn do_execute_proc<F>(mut closure: F) -> Result<(), Exception>
 where
     F: FnMut(),
@@ -47,13 +40,19 @@ where
     let mut exception = Exception::empty();
     let closure = &mut closure as *mut _ as *mut c_void;
 
-    unsafe {
-        match handler_stub(handled_proc::<F>, closure, &mut exception) {
-            MS_CATCHED => Err(exception),
-            MS_DISABLED => panic!("exception handling is not supported in this build of microseh"),
-            /* MS_SUCCEEDED */ _ => Ok(()),
-        }
+    match unsafe { handler_stub(handled_proc::<F>, closure, &mut exception) } {
+        MS_SUCCEEDED => Ok(()),
+        MS_CATCHED => Err(exception),
+        _ => unreachable!(),
     }
+}
+
+#[cfg(any(not(windows), docsrs))]
+fn do_execute_proc<F>(closure: F) -> Result<(), Exception>
+where
+    F: FnMut(),
+{
+    panic!("exception handling is not available in this build of microseh")
 }
 
 /// Executes the provided closure in a context where exceptions are handled, catching any\
@@ -95,6 +94,7 @@ where
 ///
 /// If exception handling is disabled in the build, which occurs when the library is\
 /// not built on Windows with Microsoft Visual C++.
+#[inline(always)]
 pub fn try_seh<F, R>(mut closure: F) -> Result<R, Exception>
 where
     F: FnMut() -> R,
