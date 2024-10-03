@@ -58,6 +58,8 @@ where
 
 /// Executes the provided closure in a context where exceptions are handled, catching any\
 /// hardware exceptions that occur.
+/// 
+/// Any value returned by the closure is returned by this function, if no exceptions occur.
 ///
 /// # Arguments
 ///
@@ -65,7 +67,7 @@ where
 ///
 /// # Returns
 ///
-/// * `Ok(())` - If the closure executed without throwing any exceptions.
+/// * `Ok(R)` - If the closure executed without throwing any exceptions.
 /// * `Err(Exception)` - If an exception occurred during the execution of the closure.
 ///
 /// # Examples
@@ -83,7 +85,7 @@ where
 /// # Caveats
 ///
 /// If an exception occours within the closure, resources that require cleanup via\
-/// the `Drop` trait, may not be properly released.
+/// the `Drop` trait, will not be released.
 ///
 /// As a rule of thumb, it's recommended not to define resources that implement\
 /// the `Drop` trait inside the closure. Instead, allocate and manage these resources\
